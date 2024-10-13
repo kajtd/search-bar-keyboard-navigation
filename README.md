@@ -1,6 +1,8 @@
-# search-bar-keyboard-navigation
+# Search Bar with Custom Keyboard Navigation
 
-This template should help get you started developing with Vue 3 in Vite.
+This project is a reusable search bar component with custom keyboard navigation. It can be used as a starting point for building more complex search interfaces.
+
+It does not use any backend API, but rather uses a local data file to simulate a server response.
 
 ## Recommended IDE Setup
 
