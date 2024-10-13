@@ -2,7 +2,7 @@
   <Transition name="toast">
     <div
       v-if="isVisible"
-      class="fixed top-4 right-4 p-4 bg-white dark:bg-gray-800 border text-black dark:text-white border-gray-700/20 dark:border-gray-700 rounded-lg shadow max-w-sm w-full transition-colors duration-200 ease-in-out"
+      class="fixed top-4 right-4 p-4 bg-white dark:bg-gray-800 border text-black dark:text-white border-gray-700/20 dark:border-gray-700 rounded-lg shadow-xs max-w-sm w-full transition-colors duration-200 ease-in-out"
     >
       {{ message }}
     </div>
