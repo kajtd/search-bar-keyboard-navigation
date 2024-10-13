@@ -170,6 +170,9 @@ const getFlatIndex = (groupName: string, localIndex: number): number => {
 
 const searchArticles = () => {
   selectedIndex.value = 0;
+  if (scrollContainer.value) {
+    scrollContainer.value.scrollTop = 0;
+  }
 };
 
 const selectArticle = (article?: Article) => {
