@@ -48,6 +48,7 @@
                     'bg-gray-100 dark:bg-gray-700':
                       selectedIndex === getFlatIndex(groupName, index),
                   },
+                  `article-entry-${article.id}`,
                 ]"
                 @click="selectArticle(article)"
                 @mouseover="selectedIndex = getFlatIndex(groupName, index)"
@@ -85,7 +86,7 @@
 import { ref, computed, watch, nextTick } from "vue";
 import type { Article } from "@/types/Article";
 import { getReadableDate } from "@/utils/util";
-import articlesData from "../../data/articles.ts";
+import { fetchArticles } from "../../data/articles.ts";
 import SearchIcon from "@/components/Icons/SearchIcon.vue";
 import ArticleIcon from "@/components/Icons/ArticleIcon.vue";
 
@@ -98,8 +99,27 @@ const emit = defineEmits<{
 const searchQuery = ref("");
 const selectedIndex = ref(0);
 const searchInput = ref<HTMLInputElement | null>(null);
-const articles = ref<Article[]>(articlesData);
+const articles = ref<Article[]>([]);
 const scrollContainer = ref<HTMLDivElement | null>(null);
+const currentPage = ref(0);
+const isLoading = ref(false);
+const hasMore = ref(true);
+
+const loadMoreArticles = async () => {
+  if (isLoading.value || !hasMore.value) return;
+
+  isLoading.value = true;
+  const newArticles = fetchArticles(currentPage.value);
+
+  if (newArticles.length === 0) {
+    hasMore.value = false;
+  } else {
+    articles.value.push(...newArticles);
+    currentPage.value++;
+  }
+
+  isLoading.value = false;
+};
 
 const filteredArticles = computed(() =>
   searchQuery.value
@@ -172,27 +192,29 @@ const navigateList = (direction: "up" | "down") => {
 
   nextTick(() => {
     const selectedElement = scrollContainer.value?.querySelector(
-      `li:nth-child(${selectedIndex.value + 1})`
-    );
-    if (selectedElement && scrollContainer.value) {
-      const containerRect = scrollContainer.value.getBoundingClientRect();
-      const elementRect = selectedElement.getBoundingClientRect();
+      `.article-entry-${flattenedArticles.value[selectedIndex.value].id}`
+    ) as HTMLElement;
 
-      if (elementRect.bottom > containerRect.bottom) {
-        scrollContainer.value.scrollTop +=
-          elementRect.bottom - containerRect.bottom;
-      } else if (elementRect.top < containerRect.top) {
-        scrollContainer.value.scrollTop -= containerRect.top - elementRect.top;
-      }
+    if (selectedElement && scrollContainer.value) {
+      selectedElement.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
     }
   });
 };
 
-// Watch
+watch(selectedIndex, () => {
+  if (selectedIndex.value === flattenedArticles.value.length - 1) {
+    loadMoreArticles();
+  }
+});
+
 watch(
   () => props.isOpen,
   (newValue) => {
     if (newValue) {
+      loadMoreArticles();
       searchQuery.value = "";
       selectedIndex.value = 0;
       nextTick(() => searchInput.value?.focus());
