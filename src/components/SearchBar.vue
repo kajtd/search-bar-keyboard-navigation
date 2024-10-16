@@ -40,18 +40,18 @@
             </div>
             <ul>
               <li
-                v-for="(article, index) in group"
+                v-for="article in group"
                 :key="article.id"
                 :class="[
                   'px-3 py-2 cursor-pointer transition-colors duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-gray-700',
                   {
                     'bg-gray-100 dark:bg-gray-700':
-                      selectedIndex === getFlatIndex(groupName, index),
+                      selectedArticleId === article.id,
                   },
                   `article-entry-${article.id}`,
                 ]"
                 @click="selectArticle(article)"
-                @mouseover="selectedIndex = getFlatIndex(groupName, index)"
+                @mouseover="selectedArticleId = article.id"
               >
                 <div class="flex items-center space-x-3">
                   <ArticleIcon class="text-gray-400 w-4 h-4 flex-shrink-0" />
@@ -86,7 +86,7 @@
 import { ref, computed, watch, nextTick } from "vue";
 import type { Article } from "@/types/Article";
 import { getReadableDate } from "@/utils/util";
-import { fetchArticles } from "../../data/articles.ts";
+import { fetchArticles } from "@/data/articles";
 import SearchIcon from "@/components/Icons/SearchIcon.vue";
 import ArticleIcon from "@/components/Icons/ArticleIcon.vue";
 
@@ -97,7 +97,7 @@ const emit = defineEmits<{
 }>();
 
 const searchQuery = ref("");
-const selectedIndex = ref(0);
+const selectedArticleId = ref<string | null>(null);
 const searchInput = ref<HTMLInputElement | null>(null);
 const articles = ref<Article[]>([]);
 const scrollContainer = ref<HTMLDivElement | null>(null);
@@ -147,10 +147,6 @@ const groupedArticles = computed(() => {
   return groups;
 });
 
-const flattenedArticles = computed(() =>
-  Object.values(groupedArticles.value).flat()
-);
-
 const getDaysSinceCreation = (createdAt: string): number => {
   const createdDate = new Date(createdAt);
   const now = new Date();
@@ -159,17 +155,10 @@ const getDaysSinceCreation = (createdAt: string): number => {
   );
 };
 
-const getFlatIndex = (groupName: string, localIndex: number): number => {
-  let flatIndex = 0;
-  for (const [name, group] of Object.entries(groupedArticles.value)) {
-    if (name === groupName) return flatIndex + localIndex;
-    flatIndex += group.length;
-  }
-  return 0;
-};
-
 const searchArticles = () => {
-  selectedIndex.value = 0;
+  if (filteredArticles.value.length > 0) {
+    selectedArticleId.value = filteredArticles.value[0].id;
+  }
   if (scrollContainer.value) {
     scrollContainer.value.scrollTop = 0;
   }
@@ -177,7 +166,8 @@ const searchArticles = () => {
 
 const selectArticle = (article?: Article) => {
   const selectedArticle =
-    article || flattenedArticles.value[selectedIndex.value];
+    article ||
+    filteredArticles.value.find((a) => a.id === selectedArticleId.value);
   if (selectedArticle) {
     emit("select", selectedArticle);
     emit("close");
@@ -185,17 +175,22 @@ const selectArticle = (article?: Article) => {
 };
 
 const navigateList = (direction: "up" | "down") => {
-  const totalItems = flattenedArticles.value.length;
+  const currentIndex = filteredArticles.value.findIndex(
+    (a) => a.id === selectedArticleId.value
+  );
+  const totalItems = filteredArticles.value.length;
   if (totalItems === 0) return;
 
-  selectedIndex.value =
+  const newIndex =
     direction === "down"
-      ? (selectedIndex.value + 1) % totalItems
-      : Math.max(0, selectedIndex.value - 1);
+      ? (currentIndex + 1) % totalItems
+      : (currentIndex - 1 + totalItems) % totalItems;
+
+  selectedArticleId.value = filteredArticles.value[newIndex].id;
 
   nextTick(() => {
     const selectedElement = scrollContainer.value?.querySelector(
-      `.article-entry-${flattenedArticles.value[selectedIndex.value].id}`
+      `.article-entry-${selectedArticleId.value}`
     ) as HTMLElement;
 
     if (selectedElement && scrollContainer.value) {
@@ -207,8 +202,11 @@ const navigateList = (direction: "up" | "down") => {
   });
 };
 
-watch(selectedIndex, () => {
-  if (selectedIndex.value === flattenedArticles.value.length - 1) {
+watch(selectedArticleId, () => {
+  if (
+    selectedArticleId.value ===
+    filteredArticles.value[filteredArticles.value.length - 1].id
+  ) {
     loadMoreArticles();
   }
 });
@@ -219,7 +217,7 @@ watch(
     if (newValue) {
       loadMoreArticles();
       searchQuery.value = "";
-      selectedIndex.value = 0;
+      selectedArticleId.value = filteredArticles.value[0].id;
       nextTick(() => searchInput.value?.focus());
     }
   }
